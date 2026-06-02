@@ -1,0 +1,18 @@
+# Rojo / Roblox
+*.rbxl
+*.rbxlx
+*.rbxl.lock
+*.rbxlx.lock
+
+# Build output
+/build/
+*.rbxm
+*.rbxmx
+
+# Tooling
+/.luaurc.local
+sourcemap.json
+
+# OS / editor
+.DS_Store
+.vscode/
