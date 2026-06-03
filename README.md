@@ -36,9 +36,12 @@ The game is large, so we build it as vertical slices — each one playable on it
 4. **Population loop:** peasants arrive (Aura-paced) into housing, auto-fill jobs by
    priority, eat food + wear clothing, and leave when starved. Staffing now scales
    production. ✅
-5. **HUD + Build/Shop menus:** wire the UI from the reference images to live state.
-6. **Aura system:** compute Aura from food volume/diversity, clothing, storage waste,
-   security, NPC relations; apply its multipliers.
+5. **HUD + Build/Shop menus:** real UI — player card (gold/XP/aura/pop), resources panel,
+   right-side action buttons, building-card Build menu, Shop shell, and a Move/Delete
+   context menu on placed buildings. (Thumbnails are placeholder swatches for now.) ✅
+6. **Aura system:** computed from food volume/diversity, clothing, ruler presence, and
+   storage waste; drives population growth (and military/cost multipliers once those
+   exist). Security + neighbor relations stubbed until Phase 8. ✅
 7. **Map & exploration:** 5000×5000 generation, stone/diamond outcroppings, discovery.
 8. **Military & NPC villages:** training, waypoints/flags, combat, trade, conquest.
 9. **Onboarding:** intro cutscene + guided first-build tutorial.
@@ -57,7 +60,8 @@ The game is large, so we build it as vertical slices — each one playable on it
 - Resource stock is one aggregate number per resource (not per-building inventories).
   The doc's first-come-first-served filling and "destroying a building loses its
   contents" aren't simulated yet.
-- Clothing is consumed but only food drives eviction for now; clothing shortage will
-  feed into Aura in Phase 6 (per the design's "Aura from clothing supply").
-- Aura is stubbed at a fixed value (`Population.STUB_AURA`) until Phase 6 computes it.
+- Aura's *security* and *neighbor relations* inputs are stubbed neutral until military
+  and NPC villages exist (Phase 8). Clothing now matters via Aura, as the design intends.
+- Aura's military/cost multipliers are wired but only bite once military and building
+  costs are defined.
 - No persistence yet — state resets on rejoin.

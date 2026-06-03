@@ -27,6 +27,7 @@ local GameConfig = require(ReplicatedStorage.Config.GameConfig)
 local Buildings = require(ReplicatedStorage.Config.Buildings)
 local GridUtil = require(ReplicatedStorage.Shared.GridUtil)
 local BuildingVisual = require(ReplicatedStorage.Shared.BuildingVisual)
+local Ground = require(ReplicatedStorage.Shared.Ground)
 local Net = require(ReplicatedStorage.Shared.Net)
 
 type Tile = GridUtil.Tile
@@ -34,7 +35,7 @@ type Record = { instanceId: number, buildingId: string, anchor: Tile, rotation: 
 
 local player = Players.LocalPlayer
 local camera = Workspace.CurrentCamera
-local PLOT_TILES = GameConfig.TEST_PLOT_TILES
+local PLOT_TILES = GameConfig.BUILDABLE_TILES
 
 local PlacementController = {}
 
@@ -163,11 +164,29 @@ local function updateGhost()
 	local w, d = GridUtil.rotateFootprint(def.footprint[1], def.footprint[2], ghostRotation)
 	local anchor = GridUtil.snapToAnchor(hit.X, hit.Z, w, d)
 	currentAnchor = anchor
+
+	-- Sit the ghost on the ground at the snapped footprint center.
+	local fc = GridUtil.footprintCenter(anchor, w, d)
+	local ignore: { Instance } = {}
+	local placedFolder = Workspace:FindFirstChild("Placed")
+	if placedFolder then
+		table.insert(ignore, placedFolder)
+	end
+	table.insert(ignore, ghost)
+	if player.Character then
+		table.insert(ignore, player.Character)
+	end
+	local groundY = Ground.heightAt(fc.X, fc.Z, ignore)
+	if not groundY then
+		ghost.PrimaryPart.Transparency = 1
+		currentValid = false
+		return
+	end
+
 	currentValid = isValid(buildingId, anchor, ghostRotation, movingId)
 	BuildingVisual.setGhostValid(ghost, currentValid)
 	local height = (ghost.PrimaryPart :: BasePart).Size.Y
-	local center = GridUtil.footprintCenter(anchor, w, d) + Vector3.new(0, height / 2, 0)
-	ghost:PivotTo(CFrame.new(center))
+	ghost:PivotTo(CFrame.new(Vector3.new(fc.X, groundY + height / 2, fc.Z)))
 end
 
 -- ── selection ────────────────────────────────────────────────────
@@ -223,6 +242,11 @@ function PlacementController.rotate()
 		ghostRotation = (ghostRotation + 1) % 4
 		rebuildGhost()
 	end
+end
+
+-- Look up a placed building's record (for UI display).
+function PlacementController.getRecord(instanceId: number): Record?
+	return localBuildings[instanceId]
 end
 
 function PlacementController.beginMove(instanceId: number)
@@ -286,7 +310,8 @@ local function onInput(input: InputObject, gameProcessed: boolean)
 	if input.UserInputType == Enum.UserInputType.MouseButton1 then
 		if mode == "placing" then
 			commitPlacement()
-		elseif mode == "managing" then
+		else
+			-- idle: click a building to select it (opens its context menu)
 			local id = raycastBuilding()
 			if id and localBuildings[id] then
 				select(id)
@@ -303,9 +328,7 @@ local function onInput(input: InputObject, gameProcessed: boolean)
 	elseif input.KeyCode == Enum.KeyCode.Escape then
 		PlacementController.cancel()
 	elseif input.KeyCode == Enum.KeyCode.X or input.KeyCode == Enum.KeyCode.Delete then
-		if mode == "managing" then
-			PlacementController.deleteSelected()
-		end
+		PlacementController.deleteSelected()
 	end
 end
 

@@ -39,8 +39,8 @@ spawn.Position = Vector3.new(plotStuds / 2, 0.5, plotStuds / 2)
 spawn.Neutral = true
 spawn.Parent = Workspace
 
-PlacementService.init(PLOT_TILES, placed)
+PlacementService.init(GameConfig.BUILDABLE_TILES, placed)
 PlacementService.start()
 EconomyService.start()
 
-print(string.format("[MiniKing] Server ready. Plot = %d tiles (%d studs).", PLOT_TILES, plotStuds))
+print("[MiniKing] Server ready. Building conforms to the landscape; a small spawn pad is at the origin.")

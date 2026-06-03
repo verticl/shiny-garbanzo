@@ -19,6 +19,7 @@ local GameConfig = require(ReplicatedStorage.Config.GameConfig)
 local Buildings = require(ReplicatedStorage.Config.Buildings)
 local GridUtil = require(ReplicatedStorage.Shared.GridUtil)
 local BuildingVisual = require(ReplicatedStorage.Shared.BuildingVisual)
+local Ground = require(ReplicatedStorage.Shared.Ground)
 local Net = require(ReplicatedStorage.Shared.Net)
 local PlayerData = require(script.Parent.PlayerData)
 
@@ -86,6 +87,12 @@ local function validate(
 		return false, "Out of bounds"
 	end
 
+	-- Must be over actual ground (your landscape) — this is the real boundary.
+	local fc = GridUtil.footprintCenter(anchor, w, d)
+	if Ground.heightAt(fc.X, fc.Z, { placedFolder }) == nil then
+		return false, "No ground here"
+	end
+
 	for _, key in ipairs(GridUtil.footprintKeys(anchor, w, d)) do
 		local occupantId = state.occupied[key]
 		if occupantId ~= nil and occupantId ~= ignoreId then
@@ -103,12 +110,18 @@ local function setOccupancy(state: PlayerState, rec: Record, occupied: boolean)
 	end
 end
 
+-- World-space center for a footprint, with Y resting on the ground below it.
+local function groundedCenter(anchor: Tile, w: number, d: number, height: number): Vector3
+	local fc = GridUtil.footprintCenter(anchor, w, d)
+	local groundY = Ground.heightAt(fc.X, fc.Z, { placedFolder }) or 0
+	return Vector3.new(fc.X, groundY + height / 2, fc.Z)
+end
+
 local function spawnModel(player: Player, rec: Record)
 	local w, d = rotatedFootprint(rec.buildingId, rec.rotation)
 	local model = BuildingVisual.create(rec.buildingId, w, d, false)
 	local height = (model.PrimaryPart :: BasePart).Size.Y
-	local center = GridUtil.footprintCenter(rec.anchor, w, d) + Vector3.new(0, height / 2, 0)
-	model:PivotTo(CFrame.new(center))
+	model:PivotTo(CFrame.new(groundedCenter(rec.anchor, w, d, height)))
 	model:SetAttribute("InstanceId", rec.instanceId)
 	model:SetAttribute("BuildingId", rec.buildingId)
 	model:SetAttribute("Owner", player.UserId)
@@ -123,8 +136,7 @@ local function moveModel(state: PlayerState, rec: Record)
 	end
 	local w, d = rotatedFootprint(rec.buildingId, rec.rotation)
 	local height = (model.PrimaryPart :: BasePart).Size.Y
-	local center = GridUtil.footprintCenter(rec.anchor, w, d) + Vector3.new(0, height / 2, 0)
-	model:PivotTo(CFrame.new(center))
+	model:PivotTo(CFrame.new(groundedCenter(rec.anchor, w, d, height)))
 end
 
 local function serialize(state: PlayerState): { Record }
@@ -152,18 +164,21 @@ local function onPlace(player: Player, buildingId: string, anchor: Tile, rotatio
 	-- spending lumber/stone/gold automatically.
 	local def = Buildings[buildingId]
 	if def.cost then
-		local c = def.cost
 		local data = PlayerData.get(player)
+		local discount = GameConfig.Aura.costMultiplier(data and data.aura or 0)
+		local needLumber = math.ceil(def.cost.lumber * discount)
+		local needStone = math.ceil(def.cost.stone * discount)
+		local needGold = math.ceil(def.cost.gold * discount)
 		local haveLumber = data and (data.stock.lumber or 0) or 0
 		local haveStone = data and (data.stock.stone or 0) or 0
 		local haveGold = data and data.gold or 0
-		if haveLumber < c.lumber or haveStone < c.stone or haveGold < c.gold then
+		if haveLumber < needLumber or haveStone < needStone or haveGold < needGold then
 			Net.event("ActionRejected"):FireClient(player, "Not enough resources")
 			return
 		end
-		PlayerData.consumeResource(player, "lumber", c.lumber)
-		PlayerData.consumeResource(player, "stone", c.stone)
-		PlayerData.spendGold(player, c.gold)
+		PlayerData.consumeResource(player, "lumber", needLumber)
+		PlayerData.consumeResource(player, "stone", needStone)
+		PlayerData.spendGold(player, needGold)
 	end
 
 	nextInstanceId += 1
@@ -224,6 +239,20 @@ local function onDelete(player: Player, instanceId: number)
 end
 
 -- ── public accessors (read-only views for other services) ───────
+-- Updates the in-world "x/N peasants" label for a worker building.
+function PlacementService.setAssigned(player: Player, instanceId: number, assigned: number, required: number)
+	local model = getState(player).models[instanceId]
+	if not model then
+		return
+	end
+	local base = model.PrimaryPart
+	local gui = base and base:FindFirstChild("Info")
+	local workers = gui and gui:FindFirstChild("Workers")
+	if workers and workers:IsA("TextLabel") then
+		workers.Text = string.format("%d/%d peasants", assigned, required)
+	end
+end
+
 function PlacementService.getBuildings(player: Player): { [number]: Record }
 	return getState(player).buildings
 end

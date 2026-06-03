@@ -50,20 +50,39 @@ function BuildingVisual.create(buildingId: string, w: number, d: number, ghost: 
 	model.PrimaryPart = base
 
 	local gui = Instance.new("BillboardGui")
-	gui.Size = UDim2.fromScale(8, 2)
+	gui.Name = "Info"
+	gui.Size = UDim2.fromScale(8, (def and def.peasants > 0) and 2.6 or 1.9)
 	gui.StudsOffsetWorldSpace = Vector3.new(0, height / 2 + 2, 0)
 	gui.AlwaysOnTop = true
 	gui.Parent = base
 
+	local needsWorkers = def ~= nil and def.peasants > 0
+
 	local label = Instance.new("TextLabel")
+	label.Name = "Title"
 	label.BackgroundTransparency = 1
-	label.Size = UDim2.fromScale(1, 1)
+	label.Size = needsWorkers and UDim2.fromScale(1, 0.62) or UDim2.fromScale(1, 1)
 	label.TextScaled = true
 	label.Font = Enum.Font.GothamBold
 	label.TextColor3 = Color3.new(1, 1, 1)
 	label.TextStrokeTransparency = 0
 	label.Text = (def and def.displayName) or buildingId
 	label.Parent = gui
+
+	if needsWorkers then
+		local workers = Instance.new("TextLabel")
+		workers.Name = "Workers"
+		workers.BackgroundTransparency = 1
+		workers.Position = UDim2.fromScale(0, 0.64)
+		workers.Size = UDim2.fromScale(1, 0.36)
+		workers.TextScaled = true
+		workers.Font = Enum.Font.GothamMedium
+		workers.TextColor3 = Color3.fromRGB(210, 225, 255)
+		workers.TextStrokeTransparency = 0.4
+		workers.Text = ghost and string.format("needs %d peasants", def.peasants)
+			or string.format("0/%d peasants", def.peasants)
+		workers.Parent = gui
+	end
 
 	return model
 end

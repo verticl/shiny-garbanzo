@@ -82,6 +82,7 @@ function PopulationService.assign(player: Player): { [number]: number }
 				local assigned = math.min(available, def.peasants)
 				staffing[rec.instanceId] = assigned / def.peasants
 				available -= assigned
+				PlacementService.setAssigned(player, rec.instanceId, assigned, def.peasants)
 			end
 		end
 	end

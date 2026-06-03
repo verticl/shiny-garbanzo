@@ -22,6 +22,11 @@ GameConfig.TILE_SIZE = 4 -- studs per tile edge  (TODO: confirm with art/charact
 -- The real 5000x5000 world (full map = MAP_SIZE / TILE_SIZE tiles) is Phase 7.
 GameConfig.TEST_PLOT_TILES = 100
 
+-- Buildable bound (tiles per side, centered on world origin's positive quadrant).
+-- Generous on purpose: the true limit is "is there ground under the cursor?",
+-- so building extends across whatever landscape exists, up to this cap.
+GameConfig.BUILDABLE_TILES = 2000 -- 8000 studs
+
 -- Two outcroppings spawn near opposite corners: one Stone mine, one Diamond mine.
 GameConfig.RESOURCE_NODES = {
 	{ type = "stone", quarry = "StoneQuarry" },
@@ -47,7 +52,7 @@ GameConfig.RESOURCES = {
 -- Day/night is purely visual (see GameConfig.DayNight) and does not gate any
 -- of these rates.
 GameConfig.Peasant = {
-	FOOD_PER_MIN = 0.5 / 60, -- was "0.5T per day" -> 0.5 per 60 min
+	FOOD_PER_MIN = 30 / 60, -- was "0.5T per day" -> 0.5 per 60 min
 	CLOTHING_PER_MIN = 0.1 / 300, -- was "0.1T per 5 days" -> 0.1 per 300 min
 	-- A peasant needs: a home slot + food + clothing.
 	-- Job-fill priority when peasants move in:
@@ -61,7 +66,6 @@ GameConfig.HOUSE_DEFAULT_CAPACITY = 4
 -- ── Population ───────────────────────────────────────────────────
 GameConfig.Population = {
 	STARTING = 5, -- peasants that arrive with the King's carriages (bootstraps first farms)
-	STUB_AURA = 75, -- placeholder Aura until Phase 6 computes it for real (drives move-in speed)
 	STARVE_SECONDS_PER_LOSS = 4, -- when food runs out, lose one peasant per this many seconds
 	MANOR_HOUSING = 5, -- the royal household; lets starting peasants live before Houses exist
 
@@ -75,7 +79,7 @@ GameConfig.Population = {
 -- ── Camera ───────────────────────────────────────────────────────
 -- Start zoomed well back to sell the "mini" scale; player can still zoom freely.
 GameConfig.Camera = {
-	DEFAULT_ZOOM = 85, -- studs the camera sits back on spawn
+	DEFAULT_ZOOM = 55, -- studs the camera sits back on spawn
 	MIN_ZOOM = 4,
 	MAX_ZOOM = 320,
 }
@@ -98,6 +102,29 @@ end
 -- Aura's downstream multipliers. These are PLACEHOLDER curves — the doc
 -- says "higher aura = % increase/decrease" without exact magnitudes (TODO).
 GameConfig.Aura = {
+	STARTING = 60, -- aura a new kingdom begins at (then AuraService drives it)
+	ADJUST_PER_SEC = 1.5, -- how fast current aura eases toward its target (per second)
+
+	-- "Comfort" targets: stock per peasant that scores full marks for that need.
+	FOOD_COMFORT_PER_PEASANT = 4,
+	CLOTH_COMFORT_PER_PEASANT = 1,
+	TIME_FULL_MINUTES = 10, -- minutes in-session for the "they like to see you" bonus to max
+
+	-- Weighted contributions to target Aura (each component is scored 0..1).
+	-- Weights should sum to 1. Tune to change what the people care about most.
+	Weights = {
+		foodVolume = 0.25, -- how much food is stocked (vs population)
+		foodDiversity = 0.15, -- having all four food types
+		clothing = 0.15, -- clothes stocked (vs population)
+		timeInGame = 0.10, -- ruler presence this session
+		lowWaste = 0.10, -- NOT letting storages sit full
+		security = 0.10, -- defense vs NPCs (stubbed until Phase 8)
+		relations = 0.15, -- standing with neighbors (stubbed until Phase 8)
+	},
+	-- Neutral stand-ins until military/villages exist (Phase 8). 1.0 = no penalty.
+	STUB_SECURITY = 1.0,
+	STUB_RELATIONS = 1.0,
+
 	-- military strength multiplier (HP & DPS): +0% at 0 aura, +50% at 100
 	militaryMultiplier = function(aura: number): number
 		return 1 + (aura / 100) * 0.5

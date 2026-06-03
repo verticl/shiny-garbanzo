@@ -58,7 +58,7 @@ function PlayerData.create(player: Player): Data
 		gold = GameConfig.Economy.STARTING_GOLD,
 		xp = 0,
 		population = GameConfig.Population.STARTING,
-		aura = GameConfig.Population.STUB_AURA,
+		aura = GameConfig.Aura.STARTING,
 		housingCapacity = 0,
 		jobSlots = 0,
 		employed = 0,

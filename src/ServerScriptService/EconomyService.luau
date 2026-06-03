@@ -23,6 +23,7 @@ local Net = require(ReplicatedStorage.Shared.Net)
 local PlacementService = require(script.Parent.PlacementService)
 local PlayerData = require(script.Parent.PlayerData)
 local PopulationService = require(script.Parent.PopulationService)
+local AuraService = require(script.Parent.AuraService)
 
 local ECON = GameConfig.Economy
 local STORAGE = GameConfig.Storage
@@ -123,7 +124,10 @@ local function tickPlayer(player: Player, dtMinutes: number, dtSeconds: number)
 	-- 3) Population eats, grows, or shrinks.
 	PopulationService.upkeep(player, dtMinutes, dtSeconds)
 
-	-- 4) Replicate.
+	-- 4) Recompute Aura from how well the kingdom is being run.
+	AuraService.update(player, dtSeconds)
+
+	-- 5) Replicate.
 	local snapshot = PlayerData.snapshot(player)
 	if snapshot then
 		Net.event("StatsUpdate"):FireClient(player, snapshot)
@@ -141,6 +145,7 @@ function EconomyService.start()
 	Players.PlayerRemoving:Connect(function(player)
 		PlayerData.remove(player)
 		PopulationService.remove(player)
+		AuraService.remove(player)
 	end)
 
 	local dtSeconds = ECON.TICK_RATE
